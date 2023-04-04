@@ -1,82 +1,78 @@
-import { useState } from 'react';
-
-const Button = ({ handleClick, text }) => {
-  return (
-    <button onClick={handleClick}>
-      {text}
-    </button>
-  )
-}
+import { useState } from 'react'
 
 
-const Feedback = ({ good, neutral, bad }) => {
+const Button = ({ handleClick, text }) => (
+  <button onClick={handleClick}>
+    {text}
+  </button>
+)
+
+const DailyAnecdote = ({ anecdotes, votes, selected, handleNextClick, handleVoteClick }) => {
   return (
     <div>
-      <h1>give feedback</h1>
-      <Button handleClick={good} text="good" />
-      <Button handleClick={neutral} text="neutral" />
-      <Button handleClick={bad} text="bad" />
+      {anecdotes[selected]}
+      <br />
+      {votes[selected]} upvotes
+      <div>
+        <Button handleClick={handleNextClick} text='next anecdote' />
+        <Button handleClick={handleVoteClick} text='vote' />
+      </div>
     </div>
   )
 }
 
-const StatisticLine = ({ text, value }) => {
-  return (
-    <tr>
-      <td>{text}</td>
-      <td>{value}</td>
-    </tr>
-  )
-}
-
-const Statistics = ({ good, neutral, bad }) => {
-  const total = good + neutral + bad
-  const average = 1 - ((bad + neutral*0.5) / total)
-  const positive = (good / total) * 100
+const MostVotes = ({ anecdotes, votes, mostVotes }) => {
   return (
     <div>
-      <h1>statistics</h1>
-      <table>
-        <tbody>
-          <StatisticLine text="good" value={good} />
-          <StatisticLine text="neutral" value={neutral} />
-          <StatisticLine text="bad" value={bad} />
-          <StatisticLine text="all" value={total} />
-          <StatisticLine text="average" value={average} />
-          <StatisticLine text="positive" value={positive + "%"} />
-        </tbody>
-      </table>
+      <h1>Anecdote with most votes</h1>
+      {anecdotes[mostVotes]}
+      <br />
+      {votes[mostVotes]} upvotes
     </div>
   )
 }
+
+
 const App = () => {
-  const [good, setGood] = useState(0);
-  const [neutral, setNeutral] = useState(0);
-  const [bad, setBad] = useState(0);
+  const anecdotes = [
+    'If it hurts, do it more often.',
+    'Adding manpower to a late software project makes it later!',
+    'The first 90 percent of the code accounts for the first 10 percent of the development time...The remaining 10 percent of the code accounts for the other 90 percent of the development time.',
+    'Any fool can write code that a computer can understand. Good programmers write code that humans can understand.',
+    'Premature optimization is the root of all evil.',
+    'Debugging is twice as hard as writing the code in the first place. Therefore, if you write the code as cleverly as possible, you are, by definition, not smart enough to debug it.',
+    'Programming without an extremely heavy use of console.log is same as if a doctor would refuse to use x-rays or blood tests when diagnosing patients.',
+    'The only way to go fast, is to go well.'
+  ]
+  const arr = new Array(anecdotes.length).fill(0)
+  const [selected, setSelected] = useState(0)
+  const [votes, setVotes] = useState(arr)
+  const [mostVotes, setMostVotes] = useState(0)
 
-  const handleGoodClick = () => {
-    setGood(good + 1);
+  const randomInt = (max) => {
+    return Math.floor(Math.random() * Math.floor(max))
   }
 
-  const handleNeutralClick = () => {
-    setNeutral(neutral + 1);
+  const handleNextClick = () => {
+    setSelected(randomInt(anecdotes.length))
   }
 
-  const handleBadClick = () => {
-    setBad(bad + 1);
+  const handleVoteClick = () => {
+    const copy = [...votes]
+    copy[selected] += 1
+    setVotes(copy)
+    if (copy[selected] > copy[mostVotes]) {
+      setMostVotes(selected)
+    }
   }
 
   return (
     <div>
-      <Feedback good={handleGoodClick} neutral={handleNeutralClick} bad={handleBadClick} />
-      {good + neutral + bad === 0 ? (
-        <p>No feedback given</p>
-       ) : (
-        <Statistics good={good} neutral={neutral} bad={bad} />
-      )}
+      <DailyAnecdote anecdotes={anecdotes} votes={votes} selected={selected} 
+                    handleNextClick={handleNextClick} handleVoteClick={handleVoteClick} />
+      <MostVotes anecdotes={anecdotes} votes={votes} mostVotes={mostVotes} />
     </div>
   )
-
 }
 
-export default App;
+export default App
