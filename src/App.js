@@ -1,76 +1,152 @@
-import { useState } from 'react'
-
-
-const Button = ({ handleClick, text }) => (
-  <button onClick={handleClick}>
-    {text}
-  </button>
-)
-
-const DailyAnecdote = ({ anecdotes, votes, selected, handleNextClick, handleVoteClick }) => {
-  return (
-    <div>
-      {anecdotes[selected]}
-      <br />
-      {votes[selected]} upvotes
-      <div>
-        <Button handleClick={handleNextClick} text='next anecdote' />
-        <Button handleClick={handleVoteClick} text='vote' />
-      </div>
-    </div>
-  )
-}
-
-const MostVotes = ({ anecdotes, votes, mostVotes }) => {
-  return (
-    <div>
-      <h1>Anecdote with most votes</h1>
-      {anecdotes[mostVotes]}
-      <br />
-      {votes[mostVotes]} upvotes
-    </div>
-  )
-}
-
+import { useState, useEffect } from 'react'
+import personService from './services/persons'
+import Person from './components/Person'
+import Form from './components/Form'
+import Filter from './components/Filter'
+import Notification from './components/Notification'
 
 const App = () => {
-  const anecdotes = [
-    'If it hurts, do it more often.',
-    'Adding manpower to a late software project makes it later!',
-    'The first 90 percent of the code accounts for the first 10 percent of the development time...The remaining 10 percent of the code accounts for the other 90 percent of the development time.',
-    'Any fool can write code that a computer can understand. Good programmers write code that humans can understand.',
-    'Premature optimization is the root of all evil.',
-    'Debugging is twice as hard as writing the code in the first place. Therefore, if you write the code as cleverly as possible, you are, by definition, not smart enough to debug it.',
-    'Programming without an extremely heavy use of console.log is same as if a doctor would refuse to use x-rays or blood tests when diagnosing patients.',
-    'The only way to go fast, is to go well.'
-  ]
-  const arr = new Array(anecdotes.length).fill(0)
-  const [selected, setSelected] = useState(0)
-  const [votes, setVotes] = useState(arr)
-  const [mostVotes, setMostVotes] = useState(0)
+  const [persons, setPersons] = useState([])
+  const [newName, setNewName] = useState('')
+  const [newNumber, setNewNumber] = useState('')
+  const [shownPersons, setShownPersons] = useState([...persons])
+  const [filter, setFilter] = useState('')
+  const [errorMessage, setErrorMessage] = useState(null)
+  const [successMessage, setSuccessMessage] = useState(null)
 
-  const randomInt = (max) => {
-    return Math.floor(Math.random() * Math.floor(max))
+
+
+  useEffect(() => {
+    personService
+      .getAll()
+      .then(initialPersons => {
+        setPersons(initialPersons)
+        setShownPersons(initialPersons)
+      })
+  }, [])
+
+  const deletePerson = (id) => {
+    personService
+      .remove(id)
+      .then(() => {
+        setPersons(persons.filter(person => person.id !== id))
+        setShownPersons(shownPersons.filter(person => person.id !== id))
+      })
+      .then(() => {
+        setSuccessMessage(`Deleted ${persons.find(person => person.id === id).name}`)
+        setTimeout(() => {
+          setSuccessMessage(null)
+        }, 5000)
+      })
+      .catch(error => {
+        setErrorMessage(`Information of ${persons.find(person => person.id === id).name} has already been removed from server`)
+        setTimeout(() => {
+          setErrorMessage(null)
+        }, 5000)
+      })
   }
 
-  const handleNextClick = () => {
-    setSelected(randomInt(anecdotes.length))
+  const updatePerson = (id, personObject) => {
+    personService
+      .update(id, personObject)
+      .then(returnedObject => {
+        setPersons(persons.map(person => person.id !== id ? person : returnedObject))
+        setShownPersons(shownPersons.map(person => person.id !== id ? person : returnedObject))
+      })
+      .then(() => {
+        setSuccessMessage(`Updated ${personObject.name}`)
+        setTimeout(() => {
+          setSuccessMessage(null)
+        }, 5000)
+      })
+      .catch(error => {
+        console.log(error.response.data)
+      })
   }
 
-  const handleVoteClick = () => {
-    const copy = [...votes]
-    copy[selected] += 1
-    setVotes(copy)
-    if (copy[selected] > copy[mostVotes]) {
-      setMostVotes(selected)
+  const addPerson = (event) => {
+    event.preventDefault()
+    if (checkName(newName)) {
+      if (window.confirm(`${newName} is already added to phonebook, would you like to replace the old number with a new one?`)) {
+        const person = persons.find(person => person.name === newName)
+        const personObject = {
+          ...person,
+          number: newNumber
+        }
+        updatePerson(person.id, personObject)
+      }
+      return
     }
+    const personObject = {
+      name: newName,
+      number: newNumber
+    }
+    personService
+      .create(personObject)
+      .then((returnedObject) => {
+        setPersons(persons.concat(returnedObject))
+        setShownPersons([...persons, returnedObject])
+        setNewName('')
+        setNewNumber('')
+        setFilter('')
+      })
+      .then(() => {
+        setSuccessMessage(`Added ${personObject.name}`)
+        setTimeout(() => {
+          setSuccessMessage(null)
+        }, 5000)
+      })
+      .catch(error => {
+        console.log(error.response.data)
+      })
   }
 
+  const handleNameChange = (event) => {
+    setNewName(event.target.value)
+  }
+
+  const handleNumberChange = (event) => {
+    setNewNumber(event.target.value)
+  }
+
+  const handleFilterChange = (event) => {
+    setFilter(event.target.value)
+    setShownPersons(persons.filter(person => person.name.toLowerCase().includes(event.target.value.toLowerCase())))
+  }
+
+
+  const inputs = [
+    { 
+      label: 'name', 
+      value: newName, 
+      onChange: handleNameChange 
+    },
+    { 
+      label: 'number', 
+      value: newNumber, 
+      onChange: handleNumberChange 
+    }
+  ]
+
+
+  const checkName = (name) => {
+    return persons.some(person => person.name === name)
+  } 
+  
   return (
     <div>
-      <DailyAnecdote anecdotes={anecdotes} votes={votes} selected={selected} 
-                    handleNextClick={handleNextClick} handleVoteClick={handleVoteClick} />
-      <MostVotes anecdotes={anecdotes} votes={votes} mostVotes={mostVotes} />
+      <h2>Phonebook</h2>
+      <Notification message={errorMessage} type="error" />
+      <Notification message={successMessage} type="success" />
+
+      <div>
+        <Filter filter={filter} onChange={handleFilterChange} />
+      </div>
+      <h2>add a new</h2>
+      <Form onSubmit={addPerson} inputs={inputs} />
+      <h2>Numbers</h2>
+      {shownPersons.map(person => 
+                        <Person key={person.name} person={person} onDelete={deletePerson}/>)}
     </div>
   )
 }
