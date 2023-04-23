@@ -21,5 +21,5 @@ const update = (id, newObject) => {
     return request.then(response => response.data)
 }
 
-
-export default { getAll, remove, create, update }
+const personService = { getAll, remove, create, update }
+export default personService
